@@ -6,4 +6,4 @@ if [ ! -f .venv/bin/activate ]; then
 fi
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 run.py
+python3 run.py "$1"
