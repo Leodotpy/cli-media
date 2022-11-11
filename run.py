@@ -38,34 +38,9 @@ def handler(signum, frame):
 # set handler
 signal.signal(signal.SIGINT, handler)
 
-
-# get image input (argument after run.py in command)
-if len(sys.argv) > 1:
-    media_file = sys.argv[1]
-else:
-    media_file = input("Enter full input file directory: ")
-
-# setup cv2 vidcap with input video file
-vidcap = cv2.VideoCapture(media_file)
-success, image = vidcap.read()
-
-# loop through each frame
-count = 0
-while success:
-    success, frame = vidcap.read()
-
-    numpydata = np.asarray(frame)
-
-    max_size = int(min(os.get_terminal_size())/1.1) # get min terminal with slight downscale
+# convert frame/image array into trucolor text output
+def getCliFrame(numpydata, skip):
     cmd = ""
-
-    mode = "halfwidth"
-
-    # skip this many pixels in frame array at a time
-    skip = math.floor(max((len(numpydata)/max_size), len(numpydata[0]))/max_size)
-
-# mode halfwidth
-    sys.stdout.write('\33[0m\n')
     for y in numpydata[::int(skip)]:
         hasAlpha = False
         l = ''
@@ -80,11 +55,86 @@ while success:
         if hasAlpha:
             cmd += l + '\33[0m\n'
 
-    cmd += '\33[0m\n'
+    # return cli output and size
+    return cmd + '\33[0m\n', (len(numpydata[::int(skip)]), len(y[::int(skip/2)]))
+
+# print media to terminal
+def printMedia(cmd, size, debug=True):
+    if debug:
+        cmd = cmd  + f"output size: {size[0]}x{size[1]}" + '\n'
+
     os.system(
         clear
     )
     sys.stdout.write(cmd)
+
+
+# get image input (argument after run.py in command)
+if len(sys.argv) > 1:
+    media_file = sys.argv[1]
+else:
+    media_file = input("Enter full input file directory: ")
+
+# setup cv2 vidcap with input video file
+vidcap = cv2.VideoCapture(media_file)
+success, vid_frame = vidcap.read()
+
+# setup cv2 imread with input image file
+img_frame = cv2.imread(media_file)
+
+# determine if mediafile is video or image
+# if detect vid file
+if img_frame is None and vid_frame is not None:
+    is_vid = True
+# elif detect image file
+elif vid_frame is not None and img_frame is not None:
+    is_vid = False
+else:
+    print("Error with inputfile. Type not valid.")
+    quit()
+
+# display image if input is image
+if not is_vid:
+
+    numpydata = np.asarray(img_frame)
+
+    # get min terminal with slight downscale
+    max_size = int(min(os.get_terminal_size())/1.2)
+
+    mode = "halfwidth"
+
+    # skip this many pixels in frame array at a time
+    skip = math.floor(max((len(numpydata)/max_size),
+                      len(numpydata[0]))/max_size)
+
+    cmd, s = getCliFrame(numpydata, skip)
+
+    printMedia(cmd, s)
+
+    quit()
+
+# loop through each frame
+count = 0
+while success:
+    success, frame = vidcap.read()
+
+    numpydata = np.asarray(frame)
+
+    # get min terminal with slight downscale
+    max_size = int(min(os.get_terminal_size())/1.2)
+
+    mode = "halfwidth"
+
+    # skip this many pixels in frame array at a time
+    skip = math.floor(max((len(numpydata)/max_size),
+                      len(numpydata[0]))/max_size)
+
+# mode halfwidth
+    sys.stdout.write('\33[0m\n')
+
+    cmd, s = getCliFrame(numpydata, skip)
+
+    printMedia(cmd, s)
     time.sleep(0.03)
     # clear terminal for new frame, "clear" is used for linux and "cls" for windows
 
